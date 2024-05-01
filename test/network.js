@@ -198,3 +198,44 @@ metatests.test('Network: httpApiCall (GET)', async (test) => {
 
   server.close();
 });
+
+metatests.test('Network: httpApiCall (status code: 404)', async (test) => {
+  const server = http.createServer();
+
+  server.on('request', (req, res) => {
+    const { url } = req;
+    const statusCode = parseInt(url.slice(1), 10);
+    res.writeHead(statusCode);
+    res.end();
+  });
+
+  server.listen(0);
+
+  await once(server, 'listening');
+
+  const expectedCode = 404;
+  const url = `http://localhost:${server.address().port}/${expectedCode}`;
+  const method = 'GET';
+  const expectedMsg = `HTTP status code ${expectedCode} for ${method} ${url}`;
+
+  try {
+    await metautil.httpApiCall(url, { method });
+    test.error(new Error('Should not be executed'));
+  } catch (err) {
+    test.strictSame(err.message, expectedMsg);
+  }
+
+  server.close();
+});
+
+metatests.test('Network: httpApiCall (wrong url)', async (test) => {
+  const url = `http://0.0.0.0`;
+  const method = 'GET';
+
+  try {
+    await metautil.httpApiCall(url, { method });
+    test.error(new Error('Should not be executed'));
+  } catch (err) {
+    test.strictSame(err.message, 'fetch failed');
+  }
+});
